@@ -1,10 +1,5 @@
 #!/usr/bin/perl -w
 
-# USAGE: ./parser.pl [log1] [log2] [...]
-# It'll use "access.log" and "error.log" by default.
-
-# Logs should be stored in ./logs and faked with the ruby script
-
 use strict;
 use warnings;
 
