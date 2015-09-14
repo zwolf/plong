@@ -15,6 +15,9 @@ use 5.010;
 use autodie 'open';
 use POE qw(Wheel::FollowTail);
 
+my $LOGPATH = "./logs/";
+
+
 # Set up shared mongodb connection
 my $client = MongoDB::MongoClient->new(host => 'localhost', port => 27017);
 my $db = $client->get_database('parsed_logs');
@@ -45,7 +48,7 @@ sub create_session {
       _start => sub {
         # Open the file for tailing
         $_[HEAP]{wheel} = POE::Wheel::FollowTail->new(
-          Filename   => "./" . $filename,
+          Filename   => $LOGPATH . $filename,
           InputEvent => 'got_line',
           ResetEvent => "got_log_rollover",
           SeekBack   => 8192,

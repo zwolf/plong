@@ -1,17 +1,34 @@
 require 'date'
 
+LOGPATH = "./logs/"
+
 def run
-  loop do
-    # Changes to a file wont appear until the file is closed, which is why we have to open/close it each time.
-    ARGV.each do |f|
-      write_log(f)
+  logs = ARGV.empty? ? ['site.access.log', 'site.error.log'] : ARGV
+
+  puts "Opening logs:"
+  logs.each do |l|
+    puts LOGPATH + l
+  end
+  
+  begin
+    loop do
+      # Changes to a file wont appear until the file is closed, which is why we have to open/close it each time.
+      logs.each do |l|
+        write_log(l)
+      end
+      sleep (1..4).to_a.sample
     end
-    sleep (1..4).to_a.sample
+  rescue SystemExit, Interrupt => e
+    puts "\nExiting (and deleting fake logs)..."
+    logs.each do |l|
+      puts "Deleting " + LOGPATH + l
+      File.delete(LOGPATH + l)
+    end
   end
 end
 
 def write_log(filename)
-  File.open("./logs/#{filename}", "a") do |file|
+  File.open(LOGPATH + "#{filename}", "a") do |file|
     ((1..4).to_a.sample).times do
       file.write("#{request}\n")
     end
