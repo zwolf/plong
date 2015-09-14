@@ -1,3 +1,5 @@
+# originally by https://github.com/jtrost
+
 require 'date'
 
 LOGPATH = "./logs/"
