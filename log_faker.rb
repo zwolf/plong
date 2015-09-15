@@ -36,6 +36,7 @@ end
 
 def delete_logs(logs)
   @logs.each {|log| File.delete(LOGPATH + log)}
+  File.delete(DATAPATH + "codex.yml")
 end
 
 def create_files
@@ -45,6 +46,12 @@ def create_files
     FileUtils.touch(LOGPATH + "#{domain}.access.log")
     @logs << "#{domain}.access.log"
   end
+  
+  # Save a list of files for the watcher to read
+  File.open(DATAPATH + "codex.yml", "a") do |file|
+    @logs.each {|log| file.write("- #{log}\n")}
+  end
+  
 end
 
 def request

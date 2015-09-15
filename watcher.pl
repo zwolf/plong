@@ -4,13 +4,15 @@ use strict;
 use warnings;
 
 use MongoDB ();
-use Parse::AccessLog;
+use YAML;
+use YAML::Loader;
 use Data::Dumper qw(Dumper);
 use 5.010;
 use autodie 'open';
 use POE qw(Wheel::FollowTail);
 
 my $LOGPATH = "./logs/";
+my $DATAPATH = "./data/";
 
 
 # Set up shared mongodb connection
@@ -23,17 +25,21 @@ my @logs;
 if (@ARGV) {
   @logs = @ARGV;
 } else {
-  @logs = ('site.access.log', 'site.error.log');
+  open my $fh, '<', "$DATAPATH/domains.yml" or die "can't open config file: $!";
+  @logs = YAML::LoadFile($fh);
+  #@logs = ('site.access.log', 'site.error.log');
 }
+
+say Dumper @logs;
 
 # Create a new POE session for each file
 for my $file (@logs) {
   say "Creating new session for $file...";
-  &create_session($file);
+  #&create_session($file);
 }
 
 # Run the POE kernel
-$poe_kernel->run();
+#$poe_kernel->run();
 
 # The basic POE session creation engine
 sub create_session {
