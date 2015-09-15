@@ -1,56 +1,54 @@
 # originally by https://github.com/jtrost
 
 require 'date'
+require 'fileutils'
+require 'yaml'
+require 'pp'
 
 LOGPATH = "./logs/"
+DATAPATH = "./data/"
+SAMPLESIZE = 10
+
+@logs = []
+@domains = ARGV.empty? ? YAML.load_file(DATAPATH + "domains.yml") : ARGV
 
 def run
-  logs = ARGV.empty? ? ['site.access.log', 'site.error.log'] : ARGV
-
-  puts "Opening logs:"
-  logs.each do |l|
-    puts LOGPATH + l
-  end
-  
   begin
     loop do
-      # Changes to a file wont appear until the file is closed, which is why we have to open/close it each time.
-      logs.each do |l|
-        write_log(l)
+      @logs.each do |filename|
+        write_log(filename)
       end
       sleep (1..4).to_a.sample
     end
   rescue SystemExit, Interrupt => e
     puts "\nExiting (and deleting fake logs)..."
-    logs.each do |l|
-      puts "Deleting " + LOGPATH + l
-      File.delete(LOGPATH + l)
-    end
+    delete_logs(@logs)
   end
 end
 
 def write_log(filename)
-  File.open(LOGPATH + "#{filename}", "a") do |file|
+  File.open(LOGPATH + filename, "a") do |file|
     ((1..4).to_a.sample).times do
       file.write("#{request}\n")
     end
   end
 end
 
-def request
-  %Q(127.0.0.1 - - [#{DateTime.now.strftime("%d\/%b\/%Y:%H:%M:%S\s-0700")}] "GET #{path.sample} HTTP/1.1" #{status_codes.sample} #{Random.new.rand(1000..50000)} "#{domains.sample}" "#{user_agents.sample}" "#{random_ip}")
+def delete_logs(logs)
+  @logs.each {|log| File.delete(LOGPATH + log)}
 end
 
-def domains
-  [
-    "http://www.usw.org/",
-    "http://www.atu.org/",
-    "http://www.trilogyinteractive.com/",
-    "http://www.theunion.org/",
-    "http://www.cadem.org/",
-    "http://www.dickdurbin.com/",
-    "http://www.afscme.org/",
-  ]
+def create_files
+  Dir.mkdir "./logs" unless Dir.exist?("./logs")
+  
+  @domains.sample(SAMPLESIZE).each do |domain|
+    FileUtils.touch(LOGPATH + "#{domain}.access.log")
+    @logs << "#{domain}.access.log"
+  end
+end
+
+def request
+  %Q(127.0.0.1 - - [#{DateTime.now.strftime("%d\/%b\/%Y:%H:%M:%S\s-0700")}] "GET #{path.sample} HTTP/1.1" #{status_codes.sample} #{Random.new.rand(1000..50000)} "#{@domains.sample}" "#{user_agents.sample}" "#{random_ip}")
 end
 
 def status_codes
@@ -109,4 +107,5 @@ def user_agents
 end
 
 ### Start running
+create_files
 run
