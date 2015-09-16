@@ -4,8 +4,7 @@ use strict;
 use warnings;
 
 use MongoDB ();
-use YAML;
-use YAML::Loader;
+use YAML::XS qw(LoadFile);
 use Data::Dumper qw(Dumper);
 use 5.010;
 use autodie 'open';
@@ -21,25 +20,22 @@ my $db = $client->get_database('parsed_logs');
 
 # Iterate through arguments as filenames if they exist
 # OR, iterate through default array
-my @logs;
+my $logs;
 if (@ARGV) {
-  @logs = @ARGV;
+  $logs = @ARGV;
 } else {
-  open my $fh, '<', "$DATAPATH/domains.yml" or die "can't open config file: $!";
-  @logs = YAML::LoadFile($fh);
-  #@logs = ('site.access.log', 'site.error.log');
+  my $codex = LoadFile('./data/codex.yml');
+  $logs = ($codex->{domains});
 }
 
-say Dumper @logs;
-
 # Create a new POE session for each file
-for my $file (@logs) {
-  say "Creating new session for $file...";
-  #&create_session($file);
+for (@{$logs}) {
+  say "Creating new session for $_...";
+  &create_session($_);
 }
 
 # Run the POE kernel
-#$poe_kernel->run();
+$poe_kernel->run();
 
 # The basic POE session creation engine
 sub create_session {
@@ -60,7 +56,6 @@ sub create_session {
       got_line => sub {
         my $parsed = parse_line($_[ARG0]);
         insert_into_db($parsed, $_[HEAP]{collection});
-
       },
       got_log_rollover => sub {
         say "Log rolled over.";
@@ -77,22 +72,34 @@ sub insert_into_db {
 }
 
 sub parse_line {
-  my ($user, $loggedat, $method, 
-      $path, $status, $bytessent, 
-      $referer, $useragent, $ip, 
-      $raw) = ( $_[0] =~ q(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\s-\s(.+)\s\[(.+)\]\s\"(\w+)\s(.+)\sHTTP/\d.\d\"\s(\d{3})\s(\d+)\s\"(http.+)\"\s\"(Mozilla.+)\"\s\"(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})\") );
+  my ($remote_addr, $remote_user, $logged_at, 
+      $method, $path, $http, $status, $bytes_sent, 
+      $referer, $user_agent, $user_ip) =
+      ($_[0] =~    /^ (\S+)        # remote_addr
+                   \ \-\ (\S+)     # remote_user
+                   \ \[([^\]]+)\]  # time_local
+                   \ \"(\S+)       # method
+                   \ (\S+)         # path 
+                   \ (\S+)\"       # http 
+                   \ (\d+)         # status
+                   \ (\-|(?:\d+))  # bytes_sent
+                   \ "(\S+)"       # referer
+                   \ "(.*?)"       # user_agent
+                   \ "(.*?)"       # user_ip
+                   $ /x );
+
   my %parsed = (
-    "user" => $user, 
-    "loggedAt" => $loggedat, 
+    "remoteUser" => $remote_user, 
+    "loggedAt" => $logged_at, 
     "method" => $method, 
     "path" => $path, 
     "status" => $status,
-    "bytesSent" => $bytessent, 
+    "bytesSent" => $bytes_sent, 
     "referer" => $referer,
-    "userAgent" => $useragent,
-    "ip" => $ip, 
+    "userAgent" => $user_agent,
+    "ip" => $user_ip, 
   );
-  return \%parsed
+  return \%parsed;
 }
 
 

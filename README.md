@@ -2,8 +2,9 @@
 A real-time log monitoring, parsing, and storage script. Or at least it will be.
 
 * Start your local mongodb service.
-* Run the log faker and use the defaults or tell it what filenames you want to use for your fake logs. By default they'll go to ./logs, so create that or decide where they should go instead.
-* Run the watcher and either tell it what files to look at (and where) or let it use it's defaults (hopefully the same as your fake logs).
+* Create a domains.yml with the list of domains you want to fake logs for. Each domain will have its own *.access.log file. The faker will create a codex file that the watcher will read in order to know what needs watching.
+* Run the log faker and let it fake logs.
+* Run the watcher and either let it look for ./data/codex.yml or tell it what files to look at (and where).
 * Watch your mongo "parsed_logs" db fill up with the parsed output of each log in its own collection.
 
 You're probably gonna need a few CPAN modules.

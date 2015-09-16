@@ -14,6 +14,7 @@ SAMPLESIZE = 10
 
 def run
   begin
+    puts "Faking logs..."
     loop do
       @logs.each do |filename|
         write_log(filename)
@@ -49,7 +50,8 @@ def create_files
   
   # Save a list of files for the watcher to read
   File.open(DATAPATH + "codex.yml", "a") do |file|
-    @logs.each {|log| file.write("- #{log}\n")}
+    file.write("---\ndomains:\n")
+    @logs.each {|log| file.write("  - #{log}\n")}
   end
   
 end
