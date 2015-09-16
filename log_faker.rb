@@ -8,6 +8,8 @@ require 'pp'
 LOGPATH = "./logs/"
 DATAPATH = "./data/"
 SAMPLESIZE = 10
+PAGELOADS_PER_SECOND = 30
+MAX_REQUESTS_PER_PAGELOAD = 4
 
 @logs = []
 @domains = ARGV.empty? ? YAML.load_file(DATAPATH + "domains.yml") : ARGV
@@ -16,10 +18,11 @@ def run
   begin
     puts "Faking logs..."
     loop do
-      @logs.each do |filename|
-        write_log(filename)
+      # A random log will get written to however many times per second you define
+      (1..PAGELOADS_PER_SECOND).each do |s|
+        write_log(@logs.sample)
       end
-      sleep (1..4).to_a.sample
+      sleep (1)
     end
   rescue SystemExit, Interrupt => e
     puts "\nExiting (and deleting fake logs)..."
@@ -29,7 +32,8 @@ end
 
 def write_log(filename)
   File.open(LOGPATH + filename, "a") do |file|
-    ((1..4).to_a.sample).times do
+    # Models between 1 and your max requests per pageload
+    ((1..MAX_REQUESTS_PER_PAGELOAD).to_a.sample).times do
       file.write("#{request}\n")
     end
   end
