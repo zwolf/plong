@@ -86,7 +86,7 @@ sub parse_line {
                    \ "(\S+)"       # referer
                    \ "(.*?)"       # user_agent
                    \ "(.*?)"       # user_ip
-                   $ /x );
+                   $ /x ); # /x for freespacing
 
   my %parsed = (
     "remoteUser" => $remote_user, 
