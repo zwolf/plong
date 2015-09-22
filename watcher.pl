@@ -3,12 +3,14 @@
 use strict;
 use warnings;
 
-use MongoDB ();
 use YAML::XS qw(LoadFile);
 use Data::Dumper qw(Dumper);
 use 5.010;
 use autodie 'open';
 use POE qw(Wheel::FollowTail);
+
+use MongoDB ();
+use Search::Elasticsearch;
 
 my $LOGPATH = "./logs/";
 my $DATAPATH = "./data/";
@@ -17,6 +19,9 @@ my $DATAPATH = "./data/";
 # Set up shared mongodb connection
 my $client = MongoDB::MongoClient->new(host => 'localhost', port => 27017);
 my $db = $client->get_database('parsed_logs');
+
+# Set up connection to local Elasticsearch cluster
+my $e = Search::Elasticsearch->new();
 
 # Iterate through arguments as filenames if they exist
 # OR, iterate through default array
@@ -51,11 +56,16 @@ sub create_session {
           SeekBack   => 8192,
         );
         # Open the collection the mongo collection
-        $_[HEAP]{collection} = $db->get_collection($filename);
+        $_[HEAP]{collection} = open_collection($filename);
+        # Create ES index
+        $_[HEAP]{es_index} = open_index($filename);
       },
       got_line => sub {
         my $parsed = parse_line($_[ARG0]);
+        # Insert document into MongoDB
         insert_into_db($parsed, $_[HEAP]{collection});
+        # Insert index into ES
+        insert_into_es($parsed, $_[HEAP]{es_index});
       },
       got_log_rollover => sub {
         say "Log rolled over.";
@@ -66,9 +76,36 @@ sub create_session {
 }
 
 # Misc subroutines to do the work
+
+sub open_collection {
+  my $collection = $db->get_collection($_[0]);
+  return $collection;
+}
+
+sub open_index {
+  my $filename = $_[0];
+  my $response;
+  if ( ($e->indices->exists(index => $filename)) == 1 ) {
+    $response = $e->indices->get( index => $filename );
+  } else {
+    $response = $e->indices->create( index => $filename );
+  }
+  return $response;
+}
+
 sub insert_into_db {
   my ($data, $collection) = @_;
   $collection->insert($data);
+}
+
+sub insert_into_es {
+  my ($data, $index) = @_;
+  my $name = (keys $index)[0];
+  $e->index(
+   index   => $name,
+   type    => 'logline',
+   body    => { 'data' => $data },
+  );
 }
 
 sub parse_line {
